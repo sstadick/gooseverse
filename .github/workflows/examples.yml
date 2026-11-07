@@ -1,0 +1,31 @@
+name: Examples
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  examples:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: aardappel/goose
+          ref: main
+          path: .ci/goose
+          persist-credentials: false
+      - name: Build current Goose
+        run: |
+          git -C .ci/goose rev-parse HEAD
+          cmake -S .ci/goose -B .ci/goose/build -DCMAKE_BUILD_TYPE=Debug -DGOOSE_BUILTIN_LIBS=
+          cmake --build .ci/goose/build --parallel 2
+          echo "$GITHUB_WORKSPACE/.ci/goose/build" >> "$GITHUB_PATH"
+      - name: Run catalog examples
+        run: python3 tests/examples.py
