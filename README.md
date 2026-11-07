@@ -175,7 +175,7 @@ The runner extracts the programs directly from this README and executes their
 assertions using TinyCC, GCC, and Clang in temporary directories. It uses an
 isolated package cache, so each invocation fetches the current branch heads.
 Set `GOOSE=/path/to/goose` to select your compiler. CI builds upstream Goose
-`main` and runs the same check; failures are visible instead of silently freezing
+from its default branch and runs the same check; failures are visible instead of silently freezing
 the catalog to an old package release.
 
 MIT; see [LICENSE](LICENSE).
