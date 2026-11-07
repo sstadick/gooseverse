@@ -1,6 +1,6 @@
 # Gooseverse
 
-Seth Stadick's public [Goose](https://github.com/aardappel/goose) packages,
+@sstadick's public [Goose](https://github.com/aardappel/goose) packages,
 examples, and shared development practices.
 
 This is a catalog, not a distribution or a version lockfile. Links and examples
