@@ -136,8 +136,13 @@ from the release checkout with `--source-url` pointing to that exact Git commit.
 ## Cross-package changes and releases
 
 Change documentation tooling first when needed, then SIMD, bstr, and I/O;
-options only needs docs. Pin downstream package changes to compatible published
-upstream commits. Publish in dependency order and identify dependent PRs.
+options only needs docs. Use compatible published release tags for runtime
+dependencies and match those tags in tests, examples, and transitive root imports.
+Keep compiler and documentation-tool CI pins on exact commits. During unreleased
+coordinated repairs, published upstream repair commits can be temporary pins;
+switch to the upstream release tag before releasing the downstream package.
+Publish in dependency order and identify dependent PRs. Never move published tags;
+dependency-only changes to released packages need new patch releases.
 Keep the Gooseverse catalog unpinned even when individual libraries use pins.
 
 Read tags and release workflows before choosing new version numbers. Breaking
