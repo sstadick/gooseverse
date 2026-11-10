@@ -24,7 +24,8 @@ entry is empty: programs import `bio.iitree`, `bio.fastx`, or `bio.radix_sort`,
 which keep their own namespaces, and only `bio.fastx` requires goose-io and
 goose-bstr. All six use goose-doc for documentation. The current catalog and
 complete runnable examples are at https://github.com/sstadick/gooseverse. Read
-the relevant package's README, API.md, tests, and `.github/workflows/ci.yml` before changing it.
+the relevant package's README, API.md, tests, and `.github/workflows/ci.yml`
+before changing it.
 Use https://github.com/aardappel/goose for language and standard-library facts;
 sstadick/goose is a contribution fork. Check the actual compiler revision when
 relying on a new language feature.
