@@ -17,11 +17,14 @@ this skill describes shared Gooseverse practices, not a frozen language version.
 | goose-bstr | `bstr.goose` / `bstr` | Native byte-string operations |
 | goose-opts | `opts.goose` / `opts` | Struct-derived CLI parsing and help |
 | goose-io | `io.goose` / `io` | Files, buffered readers/writers, borrowed lines |
+| goose-bio | `bio.goose` / `bio` | Interval tree, FASTA/FASTQ reader, radix sort |
 
-Runtime dependencies run `goose-io → goose-bstr → goose-simd`. All five use
-goose-doc for documentation. The current catalog and complete runnable examples
-are at https://github.com/sstadick/gooseverse. Read the relevant package's
-README, API.md, tests, and `.github/workflows/ci.yml` before changing it.
+Runtime dependencies run `goose-io → goose-bstr → goose-simd`. goose-bio's
+entry is empty: programs import `bio.iitree`, `bio.fastx`, or `bio.radix_sort`,
+which keep their own namespaces, and only `bio.fastx` requires goose-io and
+goose-bstr. All six use goose-doc for documentation. The current catalog and
+complete runnable examples are at https://github.com/sstadick/gooseverse. Read
+the relevant package's README, API.md, tests, and `.github/workflows/ci.yml` before changing it.
 Use https://github.com/aardappel/goose for language and standard-library facts;
 sstadick/goose is a contribution fork. Check the actual compiler revision when
 relying on a new language feature.
@@ -135,8 +138,8 @@ from the release checkout with `--source-url` pointing to that exact Git commit.
 
 ## Cross-package changes and releases
 
-Change documentation tooling first when needed, then SIMD, bstr, and I/O;
-options only needs docs. Use compatible published release tags for runtime
+Change documentation tooling first when needed, then SIMD, bstr, I/O, and
+bio; options only needs docs. Use compatible published release tags for runtime
 dependencies and match those tags in tests, examples, and transitive root imports.
 Keep compiler and documentation-tool CI pins on exact commits. During unreleased
 coordinated repairs, published upstream repair commits can be temporary pins;

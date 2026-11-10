@@ -17,9 +17,11 @@ compatibility policy, tests, and API reference.
 | [goose-bstr](https://github.com/sstadick/goose-bstr) | Byte-string search, splitting, and text handling | `bstr` |
 | [goose-opts](https://github.com/sstadick/goose-opts) | Struct-derived command-line options and help | `opts` |
 | [goose-io](https://github.com/sstadick/goose-io) | Synchronous files, buffered streams, and borrowed lines | `io` |
+| [goose-bio](https://github.com/sstadick/goose-bio) | Implicit interval tree, FASTA/FASTQ reader, and radix sort | `bio`, then `bio.iitree`, `bio.fastx`, `bio.radix_sort` |
 
-Runtime dependencies: **goose-io → goose-bstr → goose-simd**. All packages
-use goose-doc for documentation; goose-doc also documents itself.
+Runtime dependencies: **goose-io → goose-bstr → goose-simd**. In goose-bio,
+only the FASTA/FASTQ reader has dependencies: goose-io and goose-bstr. All
+packages use goose-doc for documentation; goose-doc also documents itself.
 
 Use a current Goose compiler with package `c_headers` support. Save any example
 below as `main.goose`, then run `goose run main.goose`. These are complete programs,
@@ -143,6 +145,34 @@ fn main() {
 ```
 
 See the [API](https://github.com/sstadick/goose-io/blob/main/API.md).
+
+### goose-bio
+
+Find the intervals that overlap a query, read FASTA and FASTQ records, and
+sort integer keys. `bio` only names the package: import the modules you use,
+each of which has its own namespace. `bio.iitree` and `bio.radix_sort` need no
+other package; `bio.fastx` needs goose-io, goose-bstr, and goose-simd.
+
+```goose
+import bio from "github.com/sstadick/goose-bio@main";
+import bio.iitree;
+
+fn main() {
+    let tree = iitree::IITree<i64> { .. };
+    tree.add("chr1", 10, 20, 1);
+    tree.add("chr1", 15, 30, 2);
+    tree.add("chr2", 10, 20, 4);
+    tree.index();
+
+    var found = 0;
+    tree.overlap("chr1", 18, 25) { interval => found += interval.value; };
+    assert(found == 3);
+    tree.overlap("chr1", 20, 25) { interval => found += interval.value; };
+    assert(found == 5);
+}
+```
+
+See the [API](https://github.com/sstadick/goose-bio/blob/main/API.md).
 
 ## Shared best practices
 
