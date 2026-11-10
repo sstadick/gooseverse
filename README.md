@@ -17,7 +17,7 @@ compatibility policy, tests, and API reference.
 | [goose-bstr](https://github.com/sstadick/goose-bstr) | Byte-string search, splitting, and text handling | `bstr` |
 | [goose-opts](https://github.com/sstadick/goose-opts) | Struct-derived command-line options and help | `opts` |
 | [goose-io](https://github.com/sstadick/goose-io) | Synchronous files, buffered streams, and borrowed lines | `io` |
-| [goose-bio](https://github.com/sstadick/goose-bio) | Implicit interval tree, FASTA/FASTQ reader, and radix sort | `bio`, then `bio.iitree`, `bio.fastx`, `bio.radix_sort` |
+| [goose-bio](https://github.com/sstadick/goose-bio) | Implicit interval tree, block-indexed interval lookup, FASTA/FASTQ reader, and radix sort | `bio`, then `bio.iitree`, `bio.lapper`, `bio.fastx`, `bio.radix_sort` |
 
 Runtime dependencies: **goose-io → goose-bstr → goose-simd**. In goose-bio,
 only the FASTA/FASTQ reader has dependencies: goose-io and goose-bstr. All
@@ -150,8 +150,10 @@ See the [API](https://github.com/sstadick/goose-io/blob/main/API.md).
 
 Find the intervals that overlap a query, read FASTA and FASTQ records, and
 sort integer keys. `bio` only names the package: import the modules you use,
-each of which has its own namespace. `bio.iitree` and `bio.radix_sort` need no
-other package; `bio.fastx` needs goose-io, goose-bstr, and goose-simd.
+each of which has its own namespace. `bio.iitree` is an interval tree over
+named contigs; `bio.lapper` indexes one sequence's sorted intervals in blocks
+for faster queries. They and `bio.radix_sort` need no other package;
+`bio.fastx` needs goose-io, goose-bstr, and goose-simd.
 
 ```goose
 import bio from "github.com/sstadick/goose-bio@main";
