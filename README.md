@@ -18,10 +18,13 @@ compatibility policy, tests, and API reference.
 | [goose-opts](https://github.com/sstadick/goose-opts) | Struct-derived command-line options and help | `opts` |
 | [goose-io](https://github.com/sstadick/goose-io) | Synchronous files, buffered streams, and borrowed lines | `io` |
 | [goose-bio](https://github.com/sstadick/goose-bio) | Implicit interval tree, block-indexed interval lookup, FASTA/FASTQ reader, and radix sort | `bio`, then `bio.iitree`, `bio.lapper`, `bio.fastx`, `bio.radix_sort` |
+| [goose-deflate](https://github.com/sstadick/goose-deflate) | Whole-buffer DEFLATE, zlib, gzip, and checksums through libdeflate | `deflate` |
 
 Runtime dependencies: **goose-io → goose-bstr → goose-simd**. In goose-bio,
 only the FASTA/FASTQ reader has dependencies: goose-io and goose-bstr. All
 packages use goose-doc for documentation; goose-doc also documents itself.
+goose-deflate has no Goose runtime dependencies; it builds vendored libdeflate
+with CMake and a native C compiler, including when using `goose run`.
 
 Use a current Goose compiler with package `c_headers` support. Save any example
 below as `main.goose`, then run `goose run main.goose`. These are complete programs,
@@ -176,6 +179,40 @@ fn main() {
 
 See the [API](https://github.com/sstadick/goose-bio/blob/main/API.md).
 
+### goose-deflate
+
+Compress and decompress independent buffers with reusable handles and
+caller-owned storage. Native builds inline the C adapters, leaving direct
+libdeflate calls. This is whole-buffer compression, not streaming gzip or a
+BGZF reader. Decompression validates the gzip checksum and stops after one
+member; use `consumed` to advance through concatenated members.
+
+```goose
+import deflate from "github.com/sstadick/goose-deflate@main";
+
+fn main() {
+    let c, ok = deflate::compressor(1);
+    let d, ready = deflate::decompressor();
+    assert(ok && ready);
+    defer c.close();
+    defer d.close();
+
+    let input = "ACGTACGTACGT\n";
+    var compressed: u8[128] = [0; 128];
+    let n = c.compress(deflate::Format.Gzip, input, compressed);
+    assert(n > 0);
+    var output: u8[64] = [0; 64];
+    let result = d.decompress(deflate::Format.Gzip, compressed[..n], output);
+    assert(result.status == deflate::Status.Success);
+    assert(result.consumed == n && result.written == input.len);
+    assert(output[..result.written] == input);
+    assert(deflate::crc32("123456789") == 0xcbf43926);
+}
+```
+
+See the [API](https://github.com/sstadick/goose-deflate/blob/main/API.md) and
+[direct-C performance comparison](https://github.com/sstadick/goose-deflate/blob/main/bench/README.md).
+
 ## Shared best practices
 
 The [working-with-goose skill](.agents/skills/working-with-goose/SKILL.md)
@@ -197,7 +234,7 @@ not a separately versioned Gooseverse package.
 
 ## Check the examples
 
-With Python 3, Git, Goose, GCC, and Clang installed:
+With Python 3, Git, Goose, CMake 3.20+, GCC, and Clang installed:
 
 ```sh
 python3 tests/examples.py

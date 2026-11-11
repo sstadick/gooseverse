@@ -18,17 +18,20 @@ this skill describes shared Gooseverse practices, not a frozen language version.
 | goose-opts | `opts.goose` / `opts` | Struct-derived CLI parsing and help |
 | goose-io | `io.goose` / `io` | Files, buffered readers/writers, borrowed lines |
 | goose-bio | `bio.goose` / `bio` | Interval tree, lapper, FASTA/FASTQ reader, radix sort |
+| goose-deflate | `deflate.goose` / `deflate` | Whole-buffer DEFLATE, zlib, gzip, CRC-32, Adler-32 |
 
 Runtime dependencies run `goose-io → goose-bstr → goose-simd`. goose-bio's
 entry is empty: programs import `bio.iitree`, `bio.lapper`, `bio.fastx`, or
 `bio.radix_sort`, which keep their own namespaces, and only `bio.fastx`
-requires goose-io and goose-bstr. All six use goose-doc for documentation. The
+requires goose-io and goose-bstr. All packages use goose-doc for documentation. The
 current catalog and complete runnable examples are at
 https://github.com/sstadick/gooseverse. Read the relevant package's README,
 API.md, tests, and `.github/workflows/ci.yml` before changing it.
 Use https://github.com/aardappel/goose for language and standard-library facts;
 sstadick/goose is a contribution fork. Check the actual compiler revision when
 relying on a new language feature.
+
+goose-deflate builds vendored libdeflate with CMake and a native C compiler, even for TinyCC runs. It has no Goose runtime dependencies. Preserve its reusable handles and caller-owned buffers; measure performance-affecting changes against the matched direct-C benchmark in `bench/run.py`.
 
 ## Names and public APIs
 
