@@ -19,12 +19,16 @@ compatibility policy, tests, and API reference.
 | [goose-io](https://github.com/sstadick/goose-io) | Synchronous files, buffered streams, and borrowed lines | `io` |
 | [goose-bio](https://github.com/sstadick/goose-bio) | Implicit interval tree, block-indexed interval lookup, FASTA/FASTQ reader, and radix sort | `bio`, then `bio.iitree`, `bio.lapper`, `bio.fastx`, `bio.radix_sort` |
 | [goose-deflate](https://github.com/sstadick/goose-deflate) | Whole-buffer DEFLATE, zlib, gzip, and checksums through libdeflate | `deflate` |
+| [goose-raylib](https://github.com/sstadick/goose-raylib) | Graphics, input, audio, images, and vector/matrix math through raylib and raymath | `raylib` |
 
 Runtime dependencies: **goose-io → goose-bstr → goose-simd**. In goose-bio,
 only the FASTA/FASTQ reader has dependencies: goose-io and goose-bstr. All
 packages use goose-doc for documentation; goose-doc also documents itself.
 goose-deflate has no Goose runtime dependencies; it builds vendored libdeflate
 with CMake and a native C compiler, including when using `goose run`.
+goose-raylib also has no Goose package dependencies; it builds vendored raylib
+with CMake 3.25+ and a native compiler. Its desktop build needs platform graphics
+development libraries even when running the display-free image example below.
 
 Use a current Goose compiler with package `c_headers` support. Save any example
 below as `main.goose`, then run `goose run main.goose`. These are complete programs,
@@ -213,6 +217,38 @@ fn main() {
 See the [API](https://github.com/sstadick/goose-deflate/blob/main/API.md) and
 [direct-C performance comparison](https://github.com/sstadick/goose-deflate/blob/main/bench/README.md).
 
+### goose-raylib
+
+Use raylib's graphics, input and audio APIs and raymath's vector/matrix functions.
+Native builds inline the packed-to-C value adapters through `c_headers`;
+TinyCC calls exports generated from the same adapters. Resources are manually
+owned: unload each once, normally with `defer`. Pointer-based `_raw` calls retain
+the native C ownership and memory-layout requirements; Goose callbacks are not
+supported.
+
+This example creates and edits CPU image pixels without opening a window:
+
+```goose
+import raylib from "github.com/sstadick/goose-raylib@main";
+
+fn main() {
+    var image = raylib::gen_image_color(7, 5, raylib::BLUE);
+    defer raylib::unload_image(image);
+    assert(raylib::is_image_valid(image));
+    raylib::image_draw_pixel(image, 6, 4, raylib::RED);
+    assert(raylib::get_image_color(image, 6, 4) == raylib::RED);
+    assert(raylib::get_image_color(image, 5, 4) == raylib::BLUE);
+    raylib::image_crop(image, raylib::Rectangle { 4.0, 3.0, 3.0, 2.0 });
+    assert(image.width == 3 && image.height == 2);
+    assert(raylib::get_image_color(image, 2, 1) == raylib::RED);
+}
+```
+
+See the [API](https://github.com/sstadick/goose-raylib/blob/main/API.md),
+[coverage and omissions](https://github.com/sstadick/goose-raylib/blob/main/COVERAGE.md),
+and [window example](https://github.com/sstadick/goose-raylib/blob/main/examples/window.goose).
+The [build instructions](https://github.com/sstadick/goose-raylib#run) list platform dependencies.
+
 ## Shared best practices
 
 The [working-with-goose skill](.agents/skills/working-with-goose/SKILL.md)
@@ -234,7 +270,8 @@ not a separately versioned Gooseverse package.
 
 ## Check the examples
 
-With Python 3, Git, Goose, CMake 3.20+, GCC, and Clang installed:
+With Python 3, Git, Goose, CMake 3.25+, GCC, Clang, and raylib's platform
+development libraries installed:
 
 ```sh
 python3 tests/examples.py
@@ -246,5 +283,6 @@ isolated package cache, so each invocation fetches the current branch heads.
 Set `GOOSE=/path/to/goose` to select your compiler. CI builds upstream Goose
 from its default branch and runs the same check; failures are visible instead of silently freezing
 the catalog to an old package release.
+Use `python3 tests/examples.py --cc clang` to run TinyCC and Clang only.
 
 MIT; see [LICENSE](LICENSE).
