@@ -17,15 +17,17 @@ compatibility policy, tests, and API reference.
 | [goose-bstr](https://github.com/sstadick/goose-bstr) | Byte-string search, splitting, and text handling | `bstr` |
 | [goose-opts](https://github.com/sstadick/goose-opts) | Struct-derived command-line options and help | `opts` |
 | [goose-io](https://github.com/sstadick/goose-io) | Synchronous files, absolute seeking, buffered streams, and borrowed lines | `io` |
-| [goose-bio](https://github.com/sstadick/goose-bio) | Interval indexes, FASTA/FASTQ streaming, indexed FASTA, and radix sort | `bio`, then `bio.iitree`, `bio.lapper`, `bio.fastx`, `bio.faidx`, `bio.radix_sort` |
+| [goose-bio](https://github.com/sstadick/goose-bio) | Interval indexes, FASTA/FASTQ streaming, plain/BGZF indexed FASTA, and radix sort | `bio`, then `bio.iitree`, `bio.lapper`, `bio.fastx`, `bio.faidx`, `bio.radix_sort` |
 | [goose-deflate](https://github.com/sstadick/goose-deflate) | Whole-buffer DEFLATE, zlib, gzip, and checksums through libdeflate | `deflate` |
 | [goose-bgzf](https://github.com/sstadick/goose-bgzf) | Streaming BGZF reader/writer and virtual-offset seeking | `bgzf` |
-| [goose-seqair](https://github.com/sstadick/goose-seqair) | Experimental BAM/SAM/CRAM readers/writers, indexed regions, and raw pileups | `seqair`, then `seqair.bam`, `seqair.sam`, `seqair.cram`, `seqair.pileup` |
+| [goose-seqair](https://github.com/sstadick/goose-seqair) | Experimental BAM/SAM/CRAM readers/writers, BAI/CSI/CRAI indexed regions, and raw pileups | `seqair`, then `seqair.bam`, `seqair.sam`, `seqair.cram`, `seqair.cram_index`, `seqair.pileup` |
 | [goose-bitvec](https://github.com/sstadick/goose-bitvec) | Packed bit vectors, range operations, popcount, and sparse set-bit iteration | `bitvec` |
+| [goose-perbase](https://github.com/sstadick/goose-perbase) | Parallel base counts, run-length depth, and adjacent-interval merging for indexed BAM/CRAM | CLI: `goose-perbase` |
 | [goose-raylib](https://github.com/sstadick/goose-raylib) | Graphics, input, audio, images, and vector/matrix math through raylib and raymath | `raylib` |
 
 Runtime dependencies: **goose-io → goose-bstr → goose-simd**. In goose-bio,
-the FASTA/FASTQ and indexed FASTA readers use goose-io and goose-bstr. All
+the FASTA/FASTQ and indexed FASTA readers use goose-io and goose-bstr; indexed
+FASTA also uses goose-bgzf/goose-deflate for BGZF reference access. All
 packages use goose-doc for documentation; goose-doc also documents itself.
 goose-deflate has no Goose runtime dependencies; it builds vendored libdeflate
 with CMake and a native C compiler, including when using `goose run`.
@@ -49,6 +51,28 @@ may request a different dependency ref; Goose warns when the root selects a
 different ref of the same repository. This catalog tests its examples together,
 but does not promise compatibility across arbitrary revisions. Applications
 that need reproducibility should choose compatible immutable revisions themselves.
+
+### goose-perbase
+
+An experimental command-line port of [Perbase](https://github.com/sstadick/perbase),
+built on goose-seqair, goose-bio, goose-bgzf and goose-bitvec. `base-depth` emits
+per-position base counts, `only-depth` emits depth runs, and `merge-adjacent`
+coalesces TSV intervals. Depth commands use worker-owned indexed BAM/CRAM readers
+and deterministic output ordering. Plain and BGZF FASTA references and TSV
+output are supported; compressed references require FAI/GZI indexes.
+
+```sh
+git clone https://github.com/sstadick/goose-perbase
+cd goose-perbase
+python3 scripts/build.py
+build/goose-perbase base-depth reads.bam -t 8 -o bases.tsv
+build/goose-perbase only-depth reads.cram -r reference.fa.gz -t 8 -o depth.tsv
+build/goose-perbase merge-adjacent depth.tsv -o merged.tsv
+```
+
+The application pins its own dependencies; no sibling library checkout is needed.
+See its [build requirements and compatibility limits](https://github.com/sstadick/goose-perbase#build-and-run)
+and [differential tests and benchmarks](https://github.com/sstadick/goose-perbase/blob/main/bench/README.md).
 
 ### goose-bitvec
 
