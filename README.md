@@ -19,6 +19,7 @@ compatibility policy, tests, and API reference.
 | [goose-io](https://github.com/sstadick/goose-io) | Synchronous files, buffered streams, and borrowed lines | `io` |
 | [goose-bio](https://github.com/sstadick/goose-bio) | Implicit interval tree, block-indexed interval lookup, FASTA/FASTQ reader, and radix sort | `bio`, then `bio.iitree`, `bio.lapper`, `bio.fastx`, `bio.radix_sort` |
 | [goose-deflate](https://github.com/sstadick/goose-deflate) | Whole-buffer DEFLATE, zlib, gzip, and checksums through libdeflate | `deflate` |
+| [goose-bgzf](https://github.com/sstadick/goose-bgzf) | Streaming BGZF reader/writer and virtual-offset seeking | `bgzf` |
 | [goose-raylib](https://github.com/sstadick/goose-raylib) | Graphics, input, audio, images, and vector/matrix math through raylib and raymath | `raylib` |
 
 Runtime dependencies: **goose-io → goose-bstr → goose-simd**. In goose-bio,
@@ -26,6 +27,8 @@ only the FASTA/FASTQ reader has dependencies: goose-io and goose-bstr. All
 packages use goose-doc for documentation; goose-doc also documents itself.
 goose-deflate has no Goose runtime dependencies; it builds vendored libdeflate
 with CMake and a native C compiler, including when using `goose run`.
+goose-bgzf uses goose-io and goose-deflate, reusing buffers and codec handles
+for block-based reading/writing and BAM-style virtual offsets.
 goose-raylib also has no Goose package dependencies; it builds vendored raylib
 with CMake 3.25+ and a native compiler. Its desktop build needs platform graphics
 development libraries even when running the display-free image example below.
@@ -216,6 +219,46 @@ fn main() {
 
 See the [API](https://github.com/sstadick/goose-deflate/blob/main/API.md) and
 [direct-C performance comparison](https://github.com/sstadick/goose-deflate/blob/main/bench/README.md).
+
+### goose-bgzf
+
+Read and write BGZF incrementally, with checked block framing and checksums.
+Virtual offsets address compressed blocks plus positions inside them; they are
+not ordinary byte distances. `read_some` reports the initialized prefix length.
+Check writer close for final errors. This example creates/truncates and removes
+`example.bgz`.
+
+```goose
+import std;
+import os;
+import bgzf from "github.com/sstadick/goose-bgzf@main";
+import io from "github.com/sstadick/goose-io@main";
+import bstr from "github.com/sstadick/goose-bstr@main";
+import simd_bytes from "github.com/sstadick/goose-simd@main";
+import deflate from "github.com/sstadick/goose-deflate@main";
+
+fn main() {
+    let path = "example.bgz"; defer delete_file(path);
+    let writer = bgzf::Writer { .. }; defer writer.close();
+    assert(writer.open(path, 1) == bgzf::Status.Ready);
+    assert(writer.write("first\n") == bgzf::Status.Ready);
+    let offset = writer.tell();
+    assert(writer.write("second\n") == bgzf::Status.Ready);
+    assert(writer.close() == bgzf::Status.Ready);
+
+    let reader = bgzf::Reader { .. }; defer reader.close();
+    assert(reader.open(path) == bgzf::Status.Ready);
+    assert(reader.seek(offset) == bgzf::Status.Ready);
+    var bytes: u8[32] = [0; 32];
+    let n, status = reader.read_some(bytes);
+    assert(status == bgzf::Status.Ready && bytes[..n] == "second\n");
+    let count, end = reader.read_some(bytes);
+    assert(count == 0 && end == bgzf::Status.End);
+}
+```
+
+See the [API](https://github.com/sstadick/goose-bgzf/blob/main/API.md) and
+[performance baseline](https://github.com/sstadick/goose-bgzf/blob/main/bench/README.md).
 
 ### goose-raylib
 

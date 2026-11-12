@@ -36,4 +36,4 @@ jobs:
           cmake --build .ci/goose/build --parallel 2
           echo "$GITHUB_WORKSPACE/.ci/goose/build" >> "$GITHUB_PATH"
       - name: Run catalog examples
-        run: python3 tests/examples.py
+        run: python3 tests/examples.py --cc clang
