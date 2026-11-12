@@ -16,19 +16,25 @@ compatibility policy, tests, and API reference.
 | [goose-simd](https://github.com/sstadick/goose-simd) | Byte vectors, comparison masks, and accelerated searches | `simd_bytes` |
 | [goose-bstr](https://github.com/sstadick/goose-bstr) | Byte-string search, splitting, and text handling | `bstr` |
 | [goose-opts](https://github.com/sstadick/goose-opts) | Struct-derived command-line options and help | `opts` |
-| [goose-io](https://github.com/sstadick/goose-io) | Synchronous files, buffered streams, and borrowed lines | `io` |
-| [goose-bio](https://github.com/sstadick/goose-bio) | Implicit interval tree, block-indexed interval lookup, FASTA/FASTQ reader, and radix sort | `bio`, then `bio.iitree`, `bio.lapper`, `bio.fastx`, `bio.radix_sort` |
+| [goose-io](https://github.com/sstadick/goose-io) | Synchronous files, absolute seeking, buffered streams, and borrowed lines | `io` |
+| [goose-bio](https://github.com/sstadick/goose-bio) | Interval indexes, FASTA/FASTQ streaming, indexed FASTA, and radix sort | `bio`, then `bio.iitree`, `bio.lapper`, `bio.fastx`, `bio.faidx`, `bio.radix_sort` |
 | [goose-deflate](https://github.com/sstadick/goose-deflate) | Whole-buffer DEFLATE, zlib, gzip, and checksums through libdeflate | `deflate` |
 | [goose-bgzf](https://github.com/sstadick/goose-bgzf) | Streaming BGZF reader/writer and virtual-offset seeking | `bgzf` |
+| [goose-seqair](https://github.com/sstadick/goose-seqair) | Experimental BAM/SAM/CRAM readers/writers, indexed regions, and raw pileups | `seqair`, then `seqair.bam`, `seqair.sam`, `seqair.cram`, `seqair.pileup` |
+| [goose-bitvec](https://github.com/sstadick/goose-bitvec) | Packed bit vectors, range operations, popcount, and sparse set-bit iteration | `bitvec` |
 | [goose-raylib](https://github.com/sstadick/goose-raylib) | Graphics, input, audio, images, and vector/matrix math through raylib and raymath | `raylib` |
 
 Runtime dependencies: **goose-io → goose-bstr → goose-simd**. In goose-bio,
-only the FASTA/FASTQ reader has dependencies: goose-io and goose-bstr. All
+the FASTA/FASTQ and indexed FASTA readers use goose-io and goose-bstr. All
 packages use goose-doc for documentation; goose-doc also documents itself.
 goose-deflate has no Goose runtime dependencies; it builds vendored libdeflate
 with CMake and a native C compiler, including when using `goose run`.
 goose-bgzf uses goose-io and goose-deflate, reusing buffers and codec handles
 for block-based reading/writing and BAM-style virtual offsets.
+goose-seqair builds on these packages for alignment I/O and uses goose-simd for
+CRAM codecs. Its README documents format support and writer limitations.
+goose-bitvec has no runtime package dependencies; mutations are worker-local,
+not atomic. Its benchmarks distinguish dense scans from sparse enumeration.
 goose-raylib also has no Goose package dependencies; it builds vendored raylib
 with CMake 3.25+ and a native compiler. Its desktop build needs platform graphics
 development libraries even when running the display-free image example below.
@@ -43,6 +49,60 @@ may request a different dependency ref; Goose warns when the root selects a
 different ref of the same repository. This catalog tests its examples together,
 but does not promise compatibility across arbitrary revisions. Applications
 that need reproducibility should choose compatible immutable revisions themselves.
+
+### goose-bitvec
+
+Set half-open ranges and enumerate only the set bits. Tail padding remains zero
+when resizing; newly exposed bits default to clear.
+
+```goose
+import std;
+import bitvec from "github.com/sstadick/goose-bitvec@main";
+
+fn main() {
+    let bits = bitvec::BitVec { .. };
+    bits.reset(130); bits.set_range(63, 129);
+    assert(bits.count_ones() == 66 && !bits.test(129));
+    bits.resize(64); bits.resize(130);
+    var positions: i64[>..] = [];
+    bits.ones() { i => positions.push(i); };
+    assert(positions.len == 1 && positions[0] == 63);
+}
+```
+
+### goose-seqair
+
+Read a SAM alignment into the same borrowed record interface used by BAM.
+This example creates and removes a small file. Record views expire on the next
+reader operation; use region stores when records must outlive a read.
+
+```goose
+import std;
+import os;
+import seqair from "github.com/sstadick/goose-seqair@main";
+import seqair.bam;
+import seqair.sam;
+import bgzf from "github.com/sstadick/goose-bgzf@main";
+import deflate from "github.com/sstadick/goose-deflate@main";
+import io from "github.com/sstadick/goose-io@main";
+import bstr from "github.com/sstadick/goose-bstr@main";
+import simd_bytes from "github.com/sstadick/goose-simd@main";
+
+fn main() {
+    let path = "example.sam";
+    assert(write_file(path, "@SQ\tSN:chrA\tLN:100\nr\t0\tchrA\t6\t40\t4M\t*\t0\t0\tACGT\tIIII\n"));
+    defer delete_file(path);
+    let reader = sam::Reader { .. }; defer reader.close();
+    assert(reader.open(path) == bam::Status.Record);
+    assert(reader.read() == bam::Status.Record);
+    {
+        let record = reader.record();
+        assert(record.name() == "r" && record.fields.pos == 5);
+        assert(record.base(2) == 'G' && record.quality(2) == 40);
+    }
+    assert(reader.read() == bam::Status.End);
+}
+```
 
 ### goose-doc
 
