@@ -76,6 +76,40 @@ all byte slices. Use receiver-directed UFCS for package-owned structs/enums,
 such as `mask.first()` or `reader.read_line()`; qualified calls remain valid.
 Do not add wrapper types merely to give a byte slice methods.
 
+## Explicit expected-status checks
+
+For package-owned status enums, use the `check` convention implemented by [goose-seqair's `bam::Status`](https://github.com/sstadick/goose-seqair/blob/main/bam.goose). Confirm the target package and revision provide it before calling it; the convention is not a builtin or an API already present in every Gooseverse package.
+
+The three forms let callers progress from fail-fast checks to contextual diagnostics to recovery as code develops. Native `guard actual == expected else { ... }` remains a valid recovery alternative; keep existing guards unless changing them serves the task.
+
+- Require an explicit expected variant: `actual.check(expected)`, `actual.check(expected, message)`, or `actual.check(expected) { actual => ... }`. Do not default to a success variant; `Record`, `Ready`, `Success`, `Ok`, and `End` have different meanings across APIs.
+- All forms return the actual status unchanged when execution continues. On a match, do nothing and skip the handler. On a mismatch, the no-handler forms abort with the expected and actual variant names plus optional context. Abort is uncatchable and does not run deferred cleanup.
+- The handler form calls the handler only on a mismatch, without an automatic abort. A `return` inside an inline block exits the lexically enclosing named function, with that function's return types and deferred cleanup. A named handler returns normally to `check`. A handler that logs and falls through leaves the failed status unchanged; it does not establish success.
+- Keep the original status-returning operations and direct comparisons available. Define helpers in the status type's owning namespace so UFCS works without a new dependency or wrapper. The success path needs only a comparison; format diagnostics only on mismatch. Use a generic function parameter for the handler, not a runtime closure or function pointer.
+- Preserve EOF, short reads, partial output, and other existing contracts. Explicitly document any whole-operation helper that translates normal EOF to success. Do not turn boolean predicates, search sentinels, counts, or value/error tuples into status wrappers just to add `.check()`.
+
+For example, with `bam` imported from seqair:
+
+```goose
+fn open_input(reader: bam::Reader&, path: const u8[:]) -> bool {
+    reader.open(path).check(bam::Status.Record) { actual =>
+        return false;
+    };
+    return true;
+}
+```
+
+Use `reader.open(path).check(bam::Status.Record, "opening BAM")` when aborting is intentional. The callback overload itself needs only:
+
+```goose
+fn check<F: fn(Status)>(actual: Status, expected: Status) -> Status {
+    if actual != expected { F(actual); }
+    actual
+}
+```
+
+When adding the convention, test matching and mismatching variants, abort diagnostics, handler fall-through, named handlers, and inline returns with multiple return values and deferred cleanup. Run native checks with inlining disabled as well as the package's normal configuration so nonlocal returns are exercised across calls. Document every overload through the package's existing goose-doc workflow.
+
 ## Documentation with goose-doc
 
 1. Put `//` comments immediately above declarations. Describe observable
