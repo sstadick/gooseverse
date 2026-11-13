@@ -88,18 +88,20 @@ The three forms let callers progress from fail-fast checks to contextual diagnos
 - Keep the original status-returning operations and direct comparisons available. Define helpers in the status type's owning namespace so UFCS works without a new dependency or wrapper. The success path needs only a comparison; format diagnostics only on mismatch. Use a generic function parameter for the handler, not a runtime closure or function pointer.
 - Preserve EOF, short reads, partial output, and other existing contracts. Explicitly document any whole-operation helper that translates normal EOF to success. Do not turn boolean predicates, search sentinels, counts, or value/error tuples into status wrappers just to add `.check()`.
 
+Seqair uses `Ok` for completed operations (open/seek, index operations, iteration helpers, region loads, encoding and writing), including empty results. Its `read()` returns `Record` for an alignment, including the last, and `End` only when no next alignment exists. A completed `reader.records()` returns `Ok` while leaving `reader.status` at `End`; check the operation's return value, not the reader state, for whole-operation success.
+
 For example, with `bam` imported from seqair:
 
 ```goose
 fn open_input(reader: bam::Reader&, path: const u8[:]) -> bool {
-    reader.open(path).check(bam::Status.Record) { actual =>
+    reader.open(path).check(bam::Status.Ok) { actual =>
         return false;
     };
     return true;
 }
 ```
 
-Use `reader.open(path).check(bam::Status.Record, "opening BAM")` when aborting is intentional. The callback overload itself needs only:
+Use `reader.open(path).check(bam::Status.Ok, "opening BAM")` when aborting is intentional. The callback overload itself needs only:
 
 ```goose
 fn check<F: fn(Status)>(actual: Status, expected: Status) -> Status {

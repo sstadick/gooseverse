@@ -99,6 +99,9 @@ fn main() {
 Read a SAM alignment into the same borrowed record interface used by BAM.
 This example creates and removes a small file. Record views expire on the next
 reader operation; use region stores when records must outlive a read.
+`Ok` means an operation succeeded, `Record` means a read delivered an alignment,
+and `End` means no next alignment exists. Reading the last alignment still
+returns `Record`.
 
 ```goose
 import std;
@@ -117,14 +120,14 @@ fn main() {
     assert(write_file(path, "@SQ\tSN:chrA\tLN:100\nr\t0\tchrA\t6\t40\t4M\t*\t0\t0\tACGT\tIIII\n"));
     defer delete_file(path);
     let reader = sam::Reader { .. }; defer reader.close();
-    assert(reader.open(path) == bam::Status.Record);
-    assert(reader.read() == bam::Status.Record);
+    reader.open(path).check(bam::Status.Ok, "opening SAM");
+    reader.read().check(bam::Status.Record);
     {
         let record = reader.record();
         assert(record.name() == "r" && record.fields.pos == 5);
         assert(record.base(2) == 'G' && record.quality(2) == 40);
     }
-    assert(reader.read() == bam::Status.End);
+    reader.read().check(bam::Status.End);
 }
 ```
 
